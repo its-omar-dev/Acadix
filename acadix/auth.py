@@ -6,14 +6,13 @@ from authlib.integrations.flask_client import OAuth
 from flask import Blueprint, current_app, flash, redirect, render_template, request, session, url_for
 from werkzeug.security import check_password_hash, generate_password_hash
 
-from acadix.rate_limit import too_many
-
 from acadix.accounts import (
     create_password_user,
     get_or_create_oauth_user,
     get_password_hash,
     get_user_by_email,
 )
+from acadix.rate_limit import too_many
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/auth")
 _EMAIL = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
