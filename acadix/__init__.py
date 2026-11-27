@@ -11,7 +11,6 @@ def create_app(test_config=None):
         app.config.update(test_config)
 
     # Import account tables before create_all so new tables are created alongside existing data.
-    from acadix import accounts  # noqa: F401
     from acadix.accounts import get_user_by_id
     from acadix.auth import auth_bp, init_auth
     from acadix.models import init_db
