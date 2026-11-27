@@ -31,6 +31,7 @@ def init_db(app):
     except Exception as exc:
         app.extensions["acadix_engine"] = None
         app.extensions["acadix_db_error"] = type(exc).__name__
+        app.logger.warning("Database initialization failed (%s)", type(exc).__name__)
 
 
 def get_engine():
