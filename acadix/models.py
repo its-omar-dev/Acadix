@@ -1,8 +1,21 @@
 """SQLAlchemy Core schema and persistence operations."""
 import json
+import secrets
 from datetime import datetime, timezone
 
-from sqlalchemy import Column, DateTime, MetaData, String, Table, Text, create_engine, func, select, text, update
+from sqlalchemy import (
+    Column,
+    DateTime,
+    MetaData,
+    String,
+    Table,
+    Text,
+    create_engine,
+    func,
+    select,
+    text,
+    update,
+)
 
 metadata = MetaData()
 roadmaps = Table(
