@@ -1,10 +1,10 @@
 from acadix import create_app
 from acadix.models import (
     create_shared_roadmap,
+    get_cached_from_db,
     get_shared_roadmap,
     get_topic_stats,
     set_cached_in_db,
-    get_cached_from_db,
 )
 
 
