@@ -64,6 +64,7 @@ def home():
         "courses": courses,
         "notice": notice,
         "csrf_token": session["csrf_token"],
+        "share_enabled": bool(current_app.config.get("DATABASE_URL")),
     }
     return render_template("index.html", payload=payload)
 
@@ -136,6 +137,7 @@ def shared_roadmap(share_id):
         **data,
         "notice": "",
         "csrf_token": session["csrf_token"],
+        "share_enabled": bool(current_app.config.get("DATABASE_URL")),
     }
     return render_template("index.html", payload=payload)
 
