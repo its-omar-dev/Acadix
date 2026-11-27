@@ -4,7 +4,7 @@ import time
 
 from groq import Groq, RateLimitError
 
-from acadix.ai.prompts import roadmap_prompt
+from acadix.ai.prompts import roadmap_prompt, streaming_roadmap_prompt
 
 MODELS = [
     "openai/gpt-oss-120b",
@@ -67,3 +67,49 @@ def all_models_busy():
     now = time.time()
     with _lock:
         return all(_resting.get(model, 0) > now for model in MODELS)
+
+
+
+def stream_roadmap(topic, level="مبتدئ"):
+    """Yield model text deltas; retry another model only before emitting output."""
+    client = _get_client()
+    if client is None:
+        return
+
+    prompt = streaming_roadmap_prompt(topic, level)
+    now = time.time()
+    for model in MODELS:
+        with _lock:
+            if _resting.get(model, 0) > now:
+                continue
+        received = False
+        try:
+            extra = {"extra_body": {"reasoning_effort": "low"}} if "gpt-oss" in model else {}
+            response = client.chat.completions.create(
+                model=model,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.7,
+                max_tokens=2200,
+                stream=True,
+                **extra,
+            )
+            for chunk in response:
+                choices = getattr(chunk, "choices", None) or []
+                if not choices:
+                    continue
+                delta = getattr(choices[0], "delta", None)
+                content = getattr(delta, "content", None) if delta else None
+                if content:
+                    received = True
+                    yield content
+            if received:
+                return
+        except RateLimitError:
+            with _lock:
+                _resting[model] = now + 600
+            if received:
+                raise
+        except Exception:
+            if received:
+                raise
+            continue
