@@ -23,6 +23,7 @@ def init_auth(app):
     app.extensions["oauth"] = oauth
     google_id = app.config.get("GOOGLE_CLIENT_ID")
     google_secret = app.config.get("GOOGLE_CLIENT_SECRET")
+    app.config["GOOGLE_OAUTH_ENABLED"] = bool(google_id and google_secret)
     if google_id and google_secret:
         oauth.register(
             name="google",
@@ -34,6 +35,7 @@ def init_auth(app):
 
     github_id = app.config.get("GITHUB_CLIENT_ID")
     github_secret = app.config.get("GITHUB_CLIENT_SECRET")
+    app.config["GITHUB_OAUTH_ENABLED"] = bool(github_id and github_secret)
     if github_id and github_secret:
         oauth.register(
             name="github",
@@ -69,8 +71,8 @@ def _page(mode, error=None):
         mode=mode,
         error=error,
         csrf_token=_csrf_token(),
-        google_enabled=bool(configured and configured.google),
-        github_enabled=bool(configured and configured.github),
+        google_enabled=current_app.config.get("GOOGLE_OAUTH_ENABLED", False),
+        github_enabled=current_app.config.get("GITHUB_OAUTH_ENABLED", False),
     )
 
 
@@ -145,9 +147,9 @@ def logout():
 @auth_bp.get("/google")
 def google_login():
     client = current_app.extensions.get("oauth")
-    if not client or not client.google:
+    if not client or not current_app.config.get("GOOGLE_OAUTH_ENABLED"):
         return _page("login", "تسجيل Google غير مهيأ بعد. أضف مفاتيح OAuth في إعدادات الاستضافة."), 503
-    redirect_uri = url_for("auth.google_callback", _external=True)
+    redirect_uri = url_for("auth.google_callback", _external=True, _scheme="https")
     return client.google.authorize_redirect(redirect_uri)
 
 
@@ -177,9 +179,9 @@ def google_callback():
 @auth_bp.get("/github")
 def github_login():
     client = current_app.extensions.get("oauth")
-    if not client or not client.github:
+    if not client or not current_app.config.get("GITHUB_OAUTH_ENABLED"):
         return _page("login", "تسجيل GitHub غير مهيأ بعد. أضف مفاتيح OAuth في إعدادات الاستضافة."), 503
-    redirect_uri = url_for("auth.github_callback", _external=True)
+    redirect_uri = url_for("auth.github_callback", _external=True, _scheme="https")
     return client.github.authorize_redirect(redirect_uri)
 
 
