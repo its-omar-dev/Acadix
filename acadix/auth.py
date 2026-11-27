@@ -74,7 +74,6 @@ def _valid_csrf():
 
 
 def _page(mode, error=None):
-    configured = current_app.extensions.get("oauth")
     return render_template(
         "auth.html",
         mode=mode,
