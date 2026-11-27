@@ -127,3 +127,34 @@ def test_generated_roadmap_is_associated_with_its_owner():
             ).mappings().one()
         assert row["user_id"] == user["id"]
         assert row["topic"] == "Python"
+
+
+def test_profile_requires_login_and_updates_display_name():
+    app = make_app()
+    client = app.test_client()
+    assert client.get("/auth/profile").status_code == 302
+
+    client.get("/auth/register")
+    response = client.post(
+        "/auth/register",
+        data={
+            "csrf_token": csrf_for(client),
+            "display_name": "Original Name",
+            "email": "profile@example.com",
+            "password": "a-strong-test-password",
+        },
+    )
+    assert response.status_code == 302
+
+    response = client.get("/auth/profile")
+    assert response.status_code == 200
+    response = client.post(
+        "/auth/profile",
+        data={
+            "csrf_token": csrf_for(client),
+            "display_name": "Updated Name",
+        },
+    )
+    assert response.status_code == 302
+    response = client.get("/auth/profile")
+    assert "Updated Name".encode() in response.data
