@@ -8,7 +8,7 @@ def test_prompt_keeps_arabic_four_phase_markdown_contract():
     prompt = roadmap_prompt("تحليل البيانات", "متوسط")
     assert "تحليل البيانات" in prompt
     assert "المرحلة 1" in prompt
-    assert "المراحل 2 إلى 4" in prompt
+    assert "نفس الشكل للمراحل 2 إلى 4" in prompt
 
 
 def test_generate_roadmap_uses_configured_fallback_model(monkeypatch):
