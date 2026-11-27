@@ -59,7 +59,7 @@
 **1. حمّل المشروع**
 
 ```bash
-git clone https://github.com/rightexsudo/Acadix.git
+git clone https://github.com/its-omar-dev/Acadix.git
 cd Acadix
 ```
 
