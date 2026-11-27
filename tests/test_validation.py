@@ -1,4 +1,4 @@
-from app import validate_roadmap
+from acadix.ai.validate import validate_roadmap
 
 
 def valid_roadmap():
@@ -15,21 +15,18 @@ def test_rejects_non_dict_input():
 def test_rejects_roadmap_without_summary():
     roadmap = valid_roadmap()
     roadmap.pop("summary")
-
     assert not validate_roadmap(roadmap)
 
 
 def test_rejects_roadmap_with_wrong_phase_count():
     roadmap = valid_roadmap()
     roadmap["phases"].pop()
-
     assert not validate_roadmap(roadmap)
 
 
 def test_rejects_phase_without_tasks():
     roadmap = valid_roadmap()
     roadmap["phases"][0].pop("tasks")
-
     assert not validate_roadmap(roadmap)
 
 
