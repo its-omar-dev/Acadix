@@ -1,5 +1,5 @@
 """Acadix application factory."""
-from flask import Flask, request
+from flask import Flask, request, session
 
 from acadix.config import Settings
 
@@ -27,11 +27,7 @@ def create_app(test_config=None):
 
     @app.context_processor
     def inject_current_user():
-        return {"current_user": get_user_by_id(session_user_id())}
-
-    def session_user_id():
-        from flask import session
-        return session.get("user_id")
+        return {"current_user": get_user_by_id(session.get("user_id"))}
 
     @app.after_request
     def add_security_headers(response):
