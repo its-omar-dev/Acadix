@@ -149,16 +149,84 @@ python make_popular.py
 
 ## النشر على الإنترنت
 
-الأداة جاهزة للنشر على [Render](https://render.com):
+### الخيار الأول: Fly.io (Docker)
 
-1. ارفع المشروع إلى مستودع GitHub.
-2. أنشئ **Web Service** وارنبطه بالمستودع.
-3. **Build Command:** `pip install -r requirements.txt`
-4. **Start Command:** `gunicorn app:app --workers 1 --threads 8 --timeout 60`
-5. أضف المتغيرات من قسم **Environment** (وليس من الكود).
-6. اختياري: اجعل خدمة مراقبة مجانية (مثل UptimeRobot) تزور `/health` كل 10 دقائق، حتى لا تنام الخدمة المجانية.
+المشروع يحتوي على `fly.toml` جاهز وDockerfile. الإعداد الحالي يستخدم منطقة `fra`، والمنفذ الداخلي `8000`، وفحص صحة على `/health`، مع إبقاء آلة واحدة تعمل لتجنب تأخر أول طلب.
 
-> الطبقة المجانية على Render تنام بعد 15 دقيقة بلا زيارات، وحصة Groq المجانية هي ما يحدّ عدد الخرائط اليومية. الكاش والسلسلة الاحتياطية للموديلات يخففان ذلك.
+**1. ثبّت flyctl وسجّل الدخول**
+
+راجع [دليل تثبيت flyctl](https://fly.io/docs/flyctl/install/) ثم نفّذ:
+
+```bash
+fly auth login
+```
+
+**2. أنشئ التطبيق مرة واحدة**
+
+اسم التطبيق الحالي في `fly.toml` هو `acadix`. إذا كان الاسم محجوزاً، أنشئ اسماً متاحاً وعدّل قيمة `app` في `fly.toml` لتطابقه:
+
+```bash
+fly apps create acadix
+```
+
+**3. أضف الأسرار**
+
+أنشئ `SECRET_KEY` و`ADMIN_TOKEN` بقيم عشوائية، ولا تضعها في الملفات أو GitHub:
+
+```bash
+fly secrets set GROQ_API_KEY="مفتاح_Groq"
+fly secrets set SECRET_KEY="قيمة_عشوائية_طويلة"
+fly secrets set ADMIN_TOKEN="رمز_إدارة_عشوائي"
+```
+
+إذا أردت روابط المشاركة والكاش الدائم والإحصاءات، أضف `DATABASE_URL` من مزود PostgreSQL:
+
+```bash
+fly secrets set DATABASE_URL="postgresql://..."
+```
+
+بدون قاعدة بيانات، يبقى التوليد متاحاً لكن المشاركة والكاش الدائم والإحصاءات لا تعمل.
+
+**4. انشر وتحقق**
+
+```bash
+fly deploy
+fly status
+fly logs
+```
+
+بعد النشر، تحقق من `https://اسم-التطبيق.fly.dev/health`. لا تعتبر الإعداد المحلي أو نجاح بناء Docker دليلاً على نشر حي؛ يلزم تنفيذ `fly deploy` بحسابك وأسرارك.
+
+**ملاحظات التكلفة:** الإعداد الحالي يترك آلة واحدة قيد التشغيل دائماً (`min_machines_running = 1`) لتقليل زمن الاستجابة. هذا قد يترتب عليه استهلاك/تكلفة حسب خطة Fly.io؛ راجع [الأسعار](https://fly.io/docs/about/pricing/) قبل النشر. يمكنك تغيير إعدادات التشغيل التلقائي في `fly.toml` إذا كانت الأولوية لتقليل التكلفة بدلاً من الاستجابة الفورية.
+
+### الخيار الثاني: VPS باستخدام Docker
+
+بعد تثبيت Docker على الخادم ونسخ المستودع:
+
+```bash
+docker build -t acadix .
+docker run -d --name acadix --restart unless-stopped \
+  -p 8000:8000 \
+  -e GROQ_API_KEY="مفتاح_Groq" \
+  -e SECRET_KEY="قيمة_عشوائية_طويلة" \
+  -e ADMIN_TOKEN="رمز_إدارة_عشوائي" \
+  -e COOKIE_SECURE=1 \
+  acadix
+```
+
+إذا استخدمت PostgreSQL، أضف `-e DATABASE_URL="postgresql://..."`. استخدم Reverse Proxy مثل Caddy أو Nginx لتوفير HTTPS، ولا تعرض منفذ التطبيق مباشرة دون TLS في الإنتاج.
+
+### الخيار الثالث: Render
+
+يمكنك ربط المستودع بخدمة Web Service على [Render](https://render.com):
+
+- **Build Command:** `pip install -r requirements.txt`
+- **Start Command:** `gunicorn --bind 0.0.0.0:$PORT --workers 1 --threads 8 --timeout 60 app:app`
+- أضف `GROQ_API_KEY` و`SECRET_KEY` و`ADMIN_TOKEN` من Environment.
+- أضف `DATABASE_URL` إذا أردت المشاركة والكاش الدائم والإحصاءات.
+- استخدم `/health` كمسار فحص الصحة.
+
+تختلف حدود النوم والتكلفة حسب خطة Render الحالية؛ راجع صفحة الأسعار والقيود قبل الاعتماد على الخدمة المجانية.
 
 ## الميزات
 
@@ -246,7 +314,7 @@ Acadix/
 المساهمات مرحّب بها: افتح **Issue** لوصف المشكلة أو الفكرة، أو **Pull Request** لتعديل مباشر.
 
 **أفكار قادمة**
-- [ ] بث النتيجة تدريجياً أثناء التوليد
+- [x] بث النتيجة تدريجياً أثناء التوليد
 - [ ] تصدير PDF
 - [ ] حسابات اختيارية لمزامنة المكتبة بين الأجهزة
 
