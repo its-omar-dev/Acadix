@@ -4,8 +4,8 @@ from acadix import cache
 def test_memory_cache_round_trip(monkeypatch):
     cache.clear_memory_cache()
     monkeypatch.setattr(cache, "set_cached_in_db", lambda *args: None)
-    cache.set_cached("Python", "مبتدئ", "خارطة تجريبية")
-    assert cache.get_cached("python", "مبتدئ") == "خارطة تجريبية"
+    cache.set_cached("phase2-memory-round-trip", "مبتدئ", "خارطة تجريبية")
+    assert cache.get_cached("phase2-memory-round-trip", "مبتدئ") == "خارطة تجريبية"
     cache.clear_memory_cache()
 
 
