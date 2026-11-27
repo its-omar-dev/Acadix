@@ -103,7 +103,12 @@ def create_share():
         title, platform, link = course.get("title"), course.get("platform"), course.get("link")
         if not all(isinstance(value, str) for value in (title, platform, link)):
             return jsonify(error="Invalid course entry"), 400
-        parsed = urlsplit(link)
+        if len(link) > 2048:
+            return jsonify(error="Invalid course URL"), 400
+        try:
+            parsed = urlsplit(link)
+        except ValueError:
+            return jsonify(error="Invalid course URL"), 400
         if (
             parsed.scheme not in {"https", "http"}
             or not parsed.hostname
