@@ -1,6 +1,5 @@
 """Account persistence tables and helpers for Acadix."""
 from datetime import datetime, timezone
-
 import json
 import secrets
 
