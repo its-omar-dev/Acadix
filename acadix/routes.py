@@ -20,6 +20,7 @@ from flask import (
 from acadix.ai.client import all_models_busy, generate_roadmap, stream_roadmap
 from acadix.ai.validate import validate_stage
 from acadix.cache import get_cached, set_cached
+from acadix.accounts import save_user_roadmap
 from acadix.models import check_database, create_shared_roadmap, get_shared_roadmap, get_topic_stats
 from acadix.rate_limit import too_many
 from acadix.search import search_learning_links
@@ -31,6 +32,16 @@ stats_bp = Blueprint("stats", __name__)
 
 LEVELS = ("مبتدئ", "متوسط", "متقدم")
 _SHARE_ID = re.compile(r"^[A-Za-z0-9_-]{12}$")
+
+
+def _save_for_logged_in_user(topic, level, roadmap, courses):
+    user_id = session.get("user_id")
+    if not user_id or not roadmap:
+        return
+    try:
+        save_user_roadmap(user_id, topic, level, roadmap, courses)
+    except Exception:
+        current_app.logger.exception("Could not save roadmap to the signed-in user account")
 
 
 @main_bp.route("/", methods=["GET", "POST"])
