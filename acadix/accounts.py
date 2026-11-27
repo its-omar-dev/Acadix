@@ -1,4 +1,5 @@
 """Account persistence tables and helpers for Acadix."""
+# ruff: noqa: I001
 from datetime import datetime, timezone
 import json
 import secrets
