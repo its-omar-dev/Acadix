@@ -1,6 +1,5 @@
 """SQLAlchemy Core schema and persistence operations."""
 import json
-import secrets
 from datetime import datetime, timezone
 
 from sqlalchemy import Column, DateTime, MetaData, String, Table, Text, create_engine, func, select, text, update
@@ -142,7 +141,7 @@ def get_topic_stats(limit=20):
     if engine is None:
         return None
     statement = (
-        select(roadmaps.c.topic, func.count().label("count"))
+        select(func.lower(roadmaps.c.topic).label("topic"), func.count().label("count"))
         .where(roadmaps.c.kind.in_(["cache", "share"]))
         .group_by(roadmaps.c.topic)
         .order_by(func.count().desc())
