@@ -21,7 +21,7 @@ def parse_events(response):
     events = []
     for frame in response.get_data(as_text=True).strip().split("\n\n"):
         lines = frame.splitlines()
-        event = next(line[6:] for line in lines if line.startswith("event:"))
+        event = next(line[6:].strip() for line in lines if line.startswith("event:"))
         payload = json.loads(next(line[5:] for line in lines if line.startswith("data:")))
         events.append((event, payload))
     return events
