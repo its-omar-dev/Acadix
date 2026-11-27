@@ -348,6 +348,7 @@ async function consumeRoadmapStream(topic,level){
     if(!data.length)return;
     const payload=JSON.parse(data.join('\n'));
     if(event==='stage'){
+      $('#loader').classList.remove('on');clearInterval(loaderTimer);
       stages[payload.stage]=payload;
       render({roadmap:stagedMarkdown(stages),topic,level,courses:[]});
     }else if(event==='complete'||event==='fallback'){
