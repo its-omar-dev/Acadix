@@ -86,6 +86,14 @@ def _sse(event, payload):
     return f"event: {event}\ndata: {json.dumps(payload, ensure_ascii=False, separators=(',', ':'))}\n\n"
 
 
+def _stream_courses(topic):
+    try:
+        return search_learning_links(topic)
+    except Exception:
+        current_app.logger.exception("Learning link search failed during streaming")
+        return []
+
+
 def _stages_to_markdown(stages):
     summary = stages[1].get("summary") or "خارطة طريق تعليمية مخصصة لهذا المجال."
     lines = ["## الملخص التنفيذي", f"- {summary}"]
@@ -128,7 +136,7 @@ def generate_stream():
             yield _sse(
                 "complete",
                 {"roadmap": cached, "topic": topic, "level": level,
-                 "courses": search_learning_links(topic)},
+                 "courses": _stream_courses(topic)},
             )
             return
 
@@ -163,7 +171,7 @@ def generate_stream():
         if len(stages) == 4:
             roadmap = _stages_to_markdown(stages)
             set_cached(topic, level, roadmap)
-            courses = search_learning_links(topic)
+            courses = _stream_courses(topic)
             yield _sse(
                 "complete",
                 {"roadmap": roadmap, "topic": topic, "level": level, "courses": courses},
@@ -181,7 +189,7 @@ def generate_stream():
             yield _sse(
                 "fallback",
                 {"roadmap": roadmap, "topic": topic, "level": level,
-                 "courses": search_learning_links(topic)},
+                 "courses": _stream_courses(topic)},
             )
         else:
             yield _sse("error", {"message": "تعذّر توليد الخارطة الآن. حاول مجدداً."})
