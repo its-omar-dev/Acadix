@@ -14,12 +14,12 @@ from acadix.accounts import (
 )
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/auth")
-oauth = OAuth()
 _EMAIL = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
 
 
 def init_auth(app):
-    oauth.init_app(app)
+    oauth = OAuth(app)
+    app.extensions["oauth"] = oauth
     google_id = app.config.get("GOOGLE_CLIENT_ID")
     google_secret = app.config.get("GOOGLE_CLIENT_SECRET")
     if google_id and google_secret:
