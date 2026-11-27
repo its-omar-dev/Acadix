@@ -157,4 +157,4 @@ def test_profile_requires_login_and_updates_display_name():
     )
     assert response.status_code == 302
     response = client.get("/auth/profile")
-    assert "Updated Name".encode() in response.data
+    assert b"Updated Name" in response.data
