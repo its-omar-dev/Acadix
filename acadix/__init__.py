@@ -10,14 +10,28 @@ def create_app(test_config=None):
     if test_config:
         app.config.update(test_config)
 
+    # Import account tables before create_all so new tables are created alongside existing data.
+    from acadix import accounts  # noqa: F401
+    from acadix.auth import auth_bp, init_auth
+    from acadix.accounts import get_user_by_id
     from acadix.models import init_db
     from acadix.routes import health_bp, main_bp, share_bp, stats_bp
 
     init_db(app)
+    init_auth(app)
+    app.register_blueprint(auth_bp)
     app.register_blueprint(main_bp)
     app.register_blueprint(share_bp)
     app.register_blueprint(health_bp)
     app.register_blueprint(stats_bp)
+
+    @app.context_processor
+    def inject_current_user():
+        return {"current_user": get_user_by_id(session_user_id())}
+
+    def session_user_id():
+        from flask import session
+        return session.get("user_id")
 
     @app.after_request
     def add_security_headers(response):
