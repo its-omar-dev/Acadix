@@ -104,7 +104,12 @@ def create_share():
         if not all(isinstance(value, str) for value in (title, platform, link)):
             return jsonify(error="Invalid course entry"), 400
         parsed = urlsplit(link)
-        if parsed.scheme not in {"https", "http"} or not parsed.netloc:
+        if (
+            parsed.scheme not in {"https", "http"}
+            or not parsed.hostname
+            or parsed.username
+            or parsed.password
+        ):
             return jsonify(error="Invalid course URL"), 400
         safe_courses.append(
             {"title": title[:300], "platform": platform[:100], "link": link[:2048]}
@@ -117,7 +122,7 @@ def create_share():
         return jsonify(error="Sharing is temporarily unavailable"), 503
     if not share_id:
         return jsonify(error="Sharing requires DATABASE_URL"), 503
-    return jsonify(id=share_id, url=request.url_root.rstrip("/") + f"/r/{share_id}"), 201
+    return jsonify(id=share_id, url=f"/r/{share_id}"), 201
 
 
 @share_bp.get("/r/<share_id>")
