@@ -14,6 +14,7 @@ from sqlalchemy import (
     UniqueConstraint,
     insert,
     select,
+    update,
 )
 from sqlalchemy.exc import IntegrityError
 
@@ -187,3 +188,18 @@ def save_user_roadmap(user_id, topic, level, roadmap, courses=None):
             )
         )
     return roadmap_id
+
+
+def update_user_profile(user_id, display_name):
+    engine = _engine()
+    if engine is None:
+        return None
+    with engine.begin() as connection:
+        result = connection.execute(
+            update(users)
+            .where(users.c.id == user_id)
+            .values(display_name=display_name.strip()[:80])
+        )
+        if not result.rowcount:
+            return None
+    return get_user_by_id(user_id)
