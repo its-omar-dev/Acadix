@@ -1,11 +1,12 @@
-from flask import Flask, render_template_string, request
-import os
 import json
-import time
+import os
 import threading
+import time
 import urllib.parse
-from youtubesearchpython import VideosSearch
+
+from flask import Flask, render_template_string, request
 from groq import Groq, RateLimitError
+from youtubesearchpython import VideosSearch
 
 app = Flask(__name__)
 
@@ -32,6 +33,34 @@ try:
         POPULAR = json.load(f)   # خرائط جاهزة للمواضيع الشائعة (بلا استهلاك API)
 except Exception:
     POPULAR = {}
+
+def validate_roadmap(roadmap):
+    """Return whether a structured roadmap has the minimum required shape.
+
+    This helper is intentionally isolated: the current application still renders
+    the existing Markdown response, so adding this validator does not alter routes
+    or the AI generation flow.
+    """
+    if not isinstance(roadmap, dict):
+        return False
+
+    summary = roadmap.get("summary")
+    if not isinstance(summary, str) or not summary.strip():
+        return False
+
+    phases = roadmap.get("phases")
+    if not isinstance(phases, list) or len(phases) != 4:
+        return False
+
+    for phase in phases:
+        if not isinstance(phase, dict):
+            return False
+        tasks = phase.get("tasks")
+        if not isinstance(tasks, list) or not tasks:
+            return False
+
+    return True
+
 
 def ask_groq(prompt):
     now = time.time()
@@ -136,8 +165,8 @@ def search_courses(search_topic):
     if not courses:
         encoded_topic = urllib.parse.quote(search_topic)
         courses.append({
-            'platform': 'يوتيوب (YouTube)', 
-            'title': f"عرض أفضل الفيديوهات والروابط التعليمية لـ '{search_topic}' على يوتيوب", 
+            'platform': 'يوتيوب (YouTube)',
+            'title': f"عرض أفضل الفيديوهات والروابط التعليمية لـ '{search_topic}' على يوتيوب",
             'link': f"https://www.youtube.com/results?search_query={encoded_topic}"
         })
 
