@@ -83,7 +83,7 @@ def home():
 
 
 def _sse(event, payload):
-    return f"event: {event}\\ndata: {json.dumps(payload, ensure_ascii=False, separators=(',', ':'))}\\n\\n"
+    return f"event: {event}\ndata: {json.dumps(payload, ensure_ascii=False, separators=(',', ':'))}\n\n"
 
 
 def _stages_to_markdown(stages):
@@ -99,7 +99,7 @@ def _stages_to_markdown(stages):
             ]
         )
         lines.extend(f"- [ ] {task}" for task in stage["tasks"])
-    return "\\n".join(lines)
+    return "\n".join(lines)
 
 
 @main_bp.post("/generate/stream")
@@ -148,8 +148,8 @@ def generate_stream():
         try:
             for delta in stream_roadmap(topic, level):
                 buffer += delta
-                while "\\n" in buffer:
-                    line, buffer = buffer.split("\\n", 1)
+                while "\n" in buffer:
+                    line, buffer = buffer.split("\n", 1)
                     item = accept_line(line.strip())
                     if item:
                         yield _sse("stage", item)
