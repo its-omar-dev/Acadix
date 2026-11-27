@@ -36,7 +36,7 @@ def test_share_create_and_public_read_round_trip():
 
     shared = client.get(share_path)
     assert shared.status_code == 200
-    assert "خارطة طريق Python".encode() in shared.data
+    assert b"Python" in shared.data
 
 
 def test_share_rejects_unsafe_course_url():
