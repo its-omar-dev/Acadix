@@ -3,7 +3,17 @@ import json
 import secrets
 from datetime import datetime, timezone
 
-from sqlalchemy import Column, DateTime, ForeignKey, String, Table, Text, UniqueConstraint, insert, select
+from sqlalchemy import (
+    Column,
+    DateTime,
+    ForeignKey,
+    String,
+    Table,
+    Text,
+    UniqueConstraint,
+    insert,
+    select,
+)
 from sqlalchemy.exc import IntegrityError
 
 from acadix.models import metadata
