@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
+    branches: [main, chore/phase-1-testing-and-ci]
     types: [opened, synchronize, reopened]
 
 jobs:
