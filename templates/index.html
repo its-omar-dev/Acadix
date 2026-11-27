@@ -33,6 +33,10 @@ svg{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-lin
 .nav-btn:hover{color:var(--text);background:rgba(255,255,255,.04)}
 .nav-btn[aria-current=page]{color:var(--gold);border-color:var(--line);background:rgba(242,193,78,.06)}
 .sidebar-foot{margin-top:auto;color:var(--muted);font-size:13px}
+.account-area{display:flex;flex-direction:column;gap:8px;font-size:14px}
+.account-area a,.account-area button{display:block;padding:9px 12px;border:1px solid var(--line);border-radius:10px;background:rgba(255,255,255,.03);color:var(--gold);text-decoration:none;text-align:center;cursor:pointer;font:inherit}
+.account-area form{margin:0}
+.account-area .account-name{color:var(--text);text-align:center;overflow-wrap:anywhere}
 .main{padding:48px 48px 90px;min-width:0}
 .view{display:none;max-width:980px;margin:0 auto}
 .view.active{display:block;animation:fi .5s both}
@@ -142,6 +146,18 @@ svg{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-lin
           </div>
           <span style="background: linear-gradient(90deg, #fff, #c4b5fd); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 800;">Acadix</span>
         </div>
+        <div class="account-area">
+          {% if current_user %}
+            <span class="account-name">مرحباً، {{ current_user.display_name }}</span>
+            <form method="post" action="/auth/logout">
+              <input type="hidden" name="csrf_token" value="{{ payload.csrf_token }}">
+              <button type="submit">تسجيل الخروج</button>
+            </form>
+          {% else %}
+            <a href="/auth/login">تسجيل الدخول</a>
+            <a href="/auth/register">إنشاء حساب</a>
+          {% endif %}
+        </div>
         <nav class="nav" aria-label="التنقل الرئيسي">
           <button class="nav-btn" type="button" data-nav="home" aria-current="page">
             <svg class="icon" viewBox="0 0 24 24"><path d="M3 11l9-8 9 8v10a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z" /></svg>
@@ -156,7 +172,7 @@ svg{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-lin
             <span>المكتبة</span>
           </button>
         </nav>
-        <p class="sidebar-foot">مجاني بالكامل، بدون تسجيل</p>
+        <p class="sidebar-foot">ابدأ كضيف أو أنشئ حساباً لحفظ خرائطك</p>
       </aside>
 
       <main class="main">
