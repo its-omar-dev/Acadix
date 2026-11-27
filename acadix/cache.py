@@ -37,7 +37,10 @@ def get_cached(topic, level):
         if cached and time.time() - cached[0] < CACHE_TTL:
             return cached[1]
         _memory.pop(key, None)
-    value = get_cached_from_db(topic, level)
+    try:
+        value = get_cached_from_db(topic, level)
+    except Exception:
+        value = None
     if value:
         with _lock:
             _memory[key] = (time.time(), value)
@@ -50,7 +53,11 @@ def set_cached(topic, level, data):
         if len(_memory) > 500:
             _memory.clear()
         _memory[key] = (time.time(), data)
-    set_cached_in_db(topic, level, data)
+    try:
+        set_cached_in_db(topic, level, data)
+    except Exception:
+        # The in-memory cache remains useful when the optional database is offline.
+        pass
 
 
 def clear_memory_cache():
