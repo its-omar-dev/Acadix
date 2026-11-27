@@ -315,7 +315,73 @@ x.onclick=()=>{L.splice(i,1);store.set('acadix_library',L);renderLib()};r.append
 /* forms */
 function quickSearch(t){$('#topic-input').value=t;$('#search-form').requestSubmit()}
 const msgs=['نرصد السماء…','نصل النجوم بعضها ببعض…','نبحث عن منارات للتعلّم…'];
-$('#search-form').addEventListener('submit',()=>{$('#loader').classList.add('on');let i=0;setInterval(()=>{$('#lmsg').textContent=msgs[++i%msgs.length]},2600)});
+function stagedMarkdown(stages){
+  const lines=['## الملخص التنفيذي','- '+(stages[1]?.summary||'خارطة طريق تعليمية قيد الإعداد.')];
+  Object.keys(stages).map(Number).sort((a,b)=>a-b).forEach(n=>{
+    const stage=stages[n];
+    lines.push('', '## المرحلة '+n+': '+stage.name, stage.description||'');
+    stage.tasks.forEach(task=>lines.push('- [ ] '+task));
+  });
+  return lines.join('\\n');
+}
+async function consumeRoadmapStream(topic,level){
+  const response=await fetch('/generate/stream',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({topic,level})
+  });
+  if(!response.ok){
+    let message='تعذّر بدء التوليد';
+    try{message=(await response.json()).error||message}catch(e){}
+    throw new Error(message);
+  }
+  if(!response.body)throw new Error('المتصفح لا يدعم قراءة البث');
+  const reader=response.body.getReader(),decoder=new TextDecoder();
+  let buffer='',finished=false;
+  const stages={};
+  const handleFrame=frame=>{
+    let event='message',data=[];
+    frame.split('\\n').forEach(line=>{
+      if(line.startsWith('event:'))event=line.slice(6).trim();
+      else if(line.startsWith('data:'))data.push(line.slice(5).trim());
+    });
+    if(!data.length)return;
+    const payload=JSON.parse(data.join('\\n'));
+    if(event==='stage'){
+      stages[payload.stage]=payload;
+      render({roadmap:stagedMarkdown(stages),topic,level,courses:[]});
+    }else if(event==='complete'||event==='fallback'){
+      render(payload);saveLib(payload);finished=true;
+    }else if(event==='error'){
+      render({roadmap:'',notice:payload.message});finished=true;
+    }
+  };
+  while(true){
+    const {value,done}=await reader.read();
+    buffer+=decoder.decode(value||new Uint8Array(),{stream:!done});
+    buffer=buffer.replace(/\\r\\n/g,'\\n');
+    let boundary;
+    while((boundary=buffer.indexOf('\\n\\n'))!==-1){
+      handleFrame(buffer.slice(0,boundary));buffer=buffer.slice(boundary+2);
+    }
+    if(done)break;
+  }
+  if(buffer.trim())handleFrame(buffer);
+  if(!finished)throw new Error('انقطع البث قبل اكتمال الخارطة');
+}
+let loaderTimer=null;
+$('#search-form').addEventListener('submit',async event=>{
+  event.preventDefault();
+  const topic=$('#topic-input').value.trim(),level=$('#level-select').value;
+  if(!topic)return;
+  $('#loader').classList.add('on');
+  let i=0;
+  clearInterval(loaderTimer);
+  loaderTimer=setInterval(()=>{$('#lmsg').textContent=msgs[++i%msgs.length]},2600);
+  try{await consumeRoadmapStream(topic,level)}
+  catch(error){render({roadmap:'',notice:error.message||'تعذّر توليد الخارطة الآن.'})}
+  finally{clearInterval(loaderTimer);$('#loader').classList.remove('on')}
+});
 addEventListener('pageshow',()=>$('#loader').classList.remove('on'));
 function downloadRoadmapImage(){const e=$('#sky');if(!e||!window.html2canvas)return;html2canvas(e,{backgroundColor:'#060918',scale:2}).then(c=>{const a=document.createElement('a');a.download='acadix-roadmap.png';a.href=c.toDataURL('image/png');a.click()})}
 /* start */
