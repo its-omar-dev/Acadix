@@ -165,8 +165,8 @@ def search_courses(search_topic):
     if not courses:
         encoded_topic = urllib.parse.quote(search_topic)
         courses.append({
-            'platform': 'يوتيوب (YouTube)', 
-            'title': f"عرض أفضل الفيديوهات والروابط التعليمية لـ '{search_topic}' على يوتيوب", 
+            'platform': 'يوتيوب (YouTube)',
+            'title': f"عرض أفضل الفيديوهات والروابط التعليمية لـ '{search_topic}' على يوتيوب",
             'link': f"https://www.youtube.com/results?search_query={encoded_topic}"
         })
 
