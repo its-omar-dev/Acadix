@@ -46,6 +46,7 @@ def test_registration_login_and_logout():
     with client.session_transaction() as session:
         assert "user_id" not in session
 
+    client.get("/auth/login")
     response = client.post(
         "/auth/login",
         data={
