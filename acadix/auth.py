@@ -20,6 +20,8 @@ from acadix.accounts import (
     get_or_create_oauth_user,
     get_password_hash,
     get_user_by_email,
+    get_user_by_id,
+    update_user_profile,
 )
 from acadix.rate_limit import too_many
 
@@ -225,3 +227,33 @@ def github_callback():
     except Exception:
         current_app.logger.exception("GitHub OAuth callback failed")
         return _page("login", "تعذّر تسجيل الدخول عبر GitHub. حاول مرة أخرى."), 400
+
+
+@auth_bp.get("/profile")
+def profile_page():
+    user = get_user_by_id(session.get("user_id"))
+    if not user:
+        return redirect(url_for("auth.login"))
+    return render_template("profile.html", user=user, csrf_token=_csrf_token())
+
+
+@auth_bp.post("/profile")
+def update_profile():
+    if not _valid_csrf():
+        return "Invalid CSRF token", 400
+    user_id = session.get("user_id")
+    if not get_user_by_id(user_id):
+        session.clear()
+        return redirect(url_for("auth.login"))
+    display_name = (request.form.get("display_name") or "").strip()
+    if len(display_name) < 2 or len(display_name) > 80:
+        user = get_user_by_id(user_id)
+        return render_template(
+            "profile.html", user=user, csrf_token=_csrf_token(),
+            error="الاسم يجب أن يكون بين حرفين و80 حرفاً.",
+        ), 400
+    user = update_user_profile(user_id, display_name)
+    if not user:
+        return "Profile update unavailable", 503
+    flash("تم تحديث الملف الشخصي بنجاح.")
+    return redirect(url_for("auth.profile_page"))
