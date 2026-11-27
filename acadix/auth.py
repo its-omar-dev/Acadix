@@ -6,6 +6,8 @@ from authlib.integrations.flask_client import OAuth
 from flask import Blueprint, current_app, flash, redirect, render_template, request, session, url_for
 from werkzeug.security import check_password_hash, generate_password_hash
 
+from acadix.rate_limit import too_many
+
 from acadix.accounts import (
     create_password_user,
     get_or_create_oauth_user,
@@ -88,6 +90,9 @@ def register_page():
 def register():
     if not _valid_csrf():
         return _page("register", "انتهت صلاحية الطلب. حدّث الصفحة وحاول مجدداً."), 400
+    ip = request.remote_addr or "unknown"
+    if too_many("register:" + ip, limit=5, window=3600):
+        return _page("register", "محاولات كثيرة. حاول بعد ساعة."), 429
     email = (request.form.get("email") or "").strip().lower()
     name = (request.form.get("display_name") or "").strip()
     password = request.form.get("password") or ""
@@ -115,6 +120,9 @@ def login_page():
 def login():
     if not _valid_csrf():
         return _page("login", "انتهت صلاحية الطلب. حدّث الصفحة وحاول مجدداً."), 400
+    ip = request.remote_addr or "unknown"
+    if too_many("login:" + ip, limit=8, window=900):
+        return _page("login", "محاولات تسجيل دخول كثيرة. حاول بعد 15 دقيقة."), 429
     email = (request.form.get("email") or "").strip().lower()
     password = request.form.get("password") or ""
     if current_app.extensions.get("acadix_engine") is None:
