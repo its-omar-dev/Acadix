@@ -1,12 +1,24 @@
 """Flask blueprints for the public, sharing, health, and admin endpoints."""
 import hmac
+import json
 import re
 import secrets
 from urllib.parse import urlsplit
 
-from flask import Blueprint, current_app, jsonify, make_response, render_template, request, session
+from flask import (
+    Blueprint,
+    Response,
+    current_app,
+    jsonify,
+    make_response,
+    render_template,
+    request,
+    session,
+    stream_with_context,
+)
 
-from acadix.ai.client import all_models_busy, generate_roadmap
+from acadix.ai.client import all_models_busy, generate_roadmap, stream_roadmap
+from acadix.ai.validate import validate_stage
 from acadix.cache import get_cached, set_cached
 from acadix.models import check_database, create_shared_roadmap, get_shared_roadmap, get_topic_stats
 from acadix.rate_limit import too_many
@@ -67,6 +79,125 @@ def home():
         "share_enabled": bool(current_app.config.get("DATABASE_URL")),
     }
     return render_template("index.html", payload=payload)
+
+
+
+def _sse(event, payload):
+    return f"event: {event}\ndata: {json.dumps(payload, ensure_ascii=False, separators=(',', ':'))}\n\n"
+
+
+def _stream_courses(topic):
+    try:
+        return search_learning_links(topic)
+    except Exception:
+        current_app.logger.exception("Learning link search failed during streaming")
+        return []
+
+
+def _stages_to_markdown(stages):
+    summary = stages[1].get("summary") or "خارطة طريق تعليمية مخصصة لهذا المجال."
+    lines = ["## الملخص التنفيذي", f"- {summary}"]
+    for number in range(1, 5):
+        stage = stages[number]
+        lines.extend(
+            [
+                "",
+                f"## المرحلة {number}: {stage['name']}",
+                stage.get("description", ""),
+            ]
+        )
+        lines.extend(f"- [ ] {task}" for task in stage["tasks"])
+    return "\n".join(lines)
+
+
+@main_bp.post("/generate/stream")
+def generate_stream():
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify(error="Invalid request body"), 400
+
+    topic = data.get("topic")
+    level = data.get("level", "مبتدئ")
+    if not isinstance(topic, str) or not topic.strip() or len(topic) > 80:
+        return jsonify(error="Invalid topic"), 400
+    topic = topic.strip()
+    if level not in LEVELS:
+        return jsonify(error="Invalid level"), 400
+
+    cached = get_cached(topic, level)
+    if not cached:
+        ip = request.remote_addr or "unknown"
+        if too_many(ip):
+            return jsonify(error="وصلت إلى حد الخرائط الجديدة هذه الساعة."), 429
+
+    @stream_with_context
+    def generate_events():
+        if cached:
+            yield _sse(
+                "complete",
+                {"roadmap": cached, "topic": topic, "level": level,
+                 "courses": _stream_courses(topic)},
+            )
+            return
+
+        stages = {}
+        buffer = ""
+
+        def accept_line(line):
+            try:
+                item = json.loads(line)
+            except (TypeError, ValueError):
+                return None
+            if not validate_stage(item) or item["stage"] in stages:
+                return None
+            stages[item["stage"]] = item
+            return item
+
+        try:
+            for delta in stream_roadmap(topic, level):
+                buffer += delta
+                while "\n" in buffer:
+                    line, buffer = buffer.split("\n", 1)
+                    item = accept_line(line.strip())
+                    if item:
+                        yield _sse("stage", item)
+            if buffer.strip():
+                item = accept_line(buffer.strip())
+                if item:
+                    yield _sse("stage", item)
+        except Exception:
+            current_app.logger.exception("Roadmap streaming failed")
+
+        if len(stages) == 4:
+            roadmap = _stages_to_markdown(stages)
+            set_cached(topic, level, roadmap)
+            courses = _stream_courses(topic)
+            yield _sse(
+                "complete",
+                {"roadmap": roadmap, "topic": topic, "level": level, "courses": courses},
+            )
+            return
+
+        # Discard partial stages in the client before switching to the legacy response.
+        try:
+            roadmap = generate_roadmap(topic, level)
+        except Exception:
+            current_app.logger.exception("Legacy roadmap fallback failed")
+            roadmap = None
+        if roadmap:
+            set_cached(topic, level, roadmap)
+            yield _sse(
+                "fallback",
+                {"roadmap": roadmap, "topic": topic, "level": level,
+                 "courses": _stream_courses(topic)},
+            )
+        else:
+            yield _sse("error", {"message": "تعذّر توليد الخارطة الآن. حاول مجدداً."})
+
+    response = Response(generate_events(), mimetype="text/event-stream")
+    response.headers["Cache-Control"] = "no-cache"
+    response.headers["X-Accel-Buffering"] = "no"
+    return response
 
 
 @share_bp.post("/share")

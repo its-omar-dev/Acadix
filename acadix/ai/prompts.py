@@ -20,3 +20,18 @@ def roadmap_prompt(topic, level):
         كرر نفس الشكل للمراحل 2 إلى 4 (تأسيس، توسع، احتراف، سوق العمل)، من 3 إلى 5 مهام لكل مرحلة، ولا تضف أي نص خارج هذه البنية.
         """
     ).strip()
+
+
+
+def streaming_roadmap_prompt(topic, level):
+    """Ask the model for four independently renderable JSONL stages."""
+    return dedent(
+        f"""
+        أنت مستشار تعليمي خبير. أنشئ خارطة طريق باللغة العربية عن "{topic}" لمستوى "{level}".
+        أخرج بالضبط أربعة أسطر، كل سطر كائن JSON مستقل وصالح (JSONL)، دون Markdown أو code fences أو أي نص إضافي.
+        صيغة كل سطر:
+        {{"stage":1,"name":"عنوان المرحلة","description":"وصف قصير","tasks":["مهمة 1","مهمة 2","مهمة 3"],"summary":"ملخص تنفيذي مختصر"}}
+        الأسطر التالية تستخدم stage بالقيم 2 ثم 3 ثم 4، وبنفس الحقول name وdescription وtasks، ويمكن حذف summary منها.
+        يجب أن تحتوي كل مرحلة على 3 إلى 5 مهام عملية قصيرة. لا تضع أسطر جديدة داخل قيم JSON.
+        """
+    ).strip()
