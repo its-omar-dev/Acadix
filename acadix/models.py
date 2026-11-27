@@ -143,7 +143,7 @@ def get_topic_stats(limit=20):
     statement = (
         select(func.lower(roadmaps.c.topic).label("topic"), func.count().label("count"))
         .where(roadmaps.c.kind.in_(["cache", "share"]))
-        .group_by(roadmaps.c.topic)
+        .group_by(func.lower(roadmaps.c.topic))
         .order_by(func.count().desc())
         .limit(limit)
     )
