@@ -17,10 +17,10 @@ from flask import (
     stream_with_context,
 )
 
+from acadix.accounts import save_user_roadmap
 from acadix.ai.client import all_models_busy, generate_roadmap, stream_roadmap
 from acadix.ai.validate import validate_stage
 from acadix.cache import get_cached, set_cached
-from acadix.accounts import save_user_roadmap
 from acadix.models import check_database, create_shared_roadmap, get_shared_roadmap, get_topic_stats
 from acadix.rate_limit import too_many
 from acadix.search import search_learning_links
@@ -89,6 +89,9 @@ def home():
         "csrf_token": session["csrf_token"],
         "share_enabled": bool(current_app.config.get("DATABASE_URL")),
     }
+    if roadmap:
+        _save_for_logged_in_user(topic, level, roadmap, courses)
+
     return render_template("index.html", payload=payload)
 
 
@@ -144,10 +147,11 @@ def generate_stream():
     @stream_with_context
     def generate_events():
         if cached:
+            courses = _stream_courses(topic)
+            _save_for_logged_in_user(topic, level, cached, courses)
             yield _sse(
                 "complete",
-                {"roadmap": cached, "topic": topic, "level": level,
-                 "courses": _stream_courses(topic)},
+                {"roadmap": cached, "topic": topic, "level": level, "courses": courses},
             )
             return
 
@@ -183,6 +187,7 @@ def generate_stream():
             roadmap = _stages_to_markdown(stages)
             set_cached(topic, level, roadmap)
             courses = _stream_courses(topic)
+            _save_for_logged_in_user(topic, level, roadmap, courses)
             yield _sse(
                 "complete",
                 {"roadmap": roadmap, "topic": topic, "level": level, "courses": courses},
@@ -197,10 +202,11 @@ def generate_stream():
             roadmap = None
         if roadmap:
             set_cached(topic, level, roadmap)
+            courses = _stream_courses(topic)
+            _save_for_logged_in_user(topic, level, roadmap, courses)
             yield _sse(
                 "fallback",
-                {"roadmap": roadmap, "topic": topic, "level": level,
-                 "courses": _stream_courses(topic)},
+                {"roadmap": roadmap, "topic": topic, "level": level, "courses": courses},
             )
         else:
             yield _sse("error", {"message": "تعذّر توليد الخارطة الآن. حاول مجدداً."})
@@ -269,6 +275,7 @@ def create_share():
         return jsonify(error="Sharing is temporarily unavailable"), 503
     if not share_id:
         return jsonify(error="Sharing requires DATABASE_URL"), 503
+    _save_for_logged_in_user(topic.strip(), level, roadmap, safe_courses)
     return jsonify(id=share_id, url=f"/r/{share_id}"), 201
 
 
