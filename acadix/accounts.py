@@ -3,7 +3,7 @@ import json
 import secrets
 from datetime import datetime, timezone
 
-from sqlalchemy import Column, DateTime, ForeignKey, String, Table, Text, insert, select
+from sqlalchemy import Column, DateTime, ForeignKey, String, Table, Text, UniqueConstraint, insert, select
 from sqlalchemy.exc import IntegrityError
 
 from acadix.models import metadata
@@ -28,7 +28,7 @@ oauth_accounts = Table(
     Column("provider", String(20), nullable=False),
     Column("provider_user_id", String(255), nullable=False),
     Column("created_at", DateTime(timezone=True), nullable=False),
-    # Provider identity is unique even when the same email is used elsewhere.
+    UniqueConstraint("provider", "provider_user_id", name="uq_oauth_provider_identity"),
 )
 
 user_roadmaps = Table(
