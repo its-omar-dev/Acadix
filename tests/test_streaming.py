@@ -118,11 +118,11 @@ def test_stream_roadmap_requests_groq_streaming(monkeypatch):
                         choices=[SimpleNamespace(delta=SimpleNamespace(content='{"stage":1}'))]
                     ),
                     SimpleNamespace(
-                        choices=[SimpleNamespace(delta=SimpleNamespace(content="\\n"))]
+                        choices=[SimpleNamespace(delta=SimpleNamespace(content="\n"))]
                     ),
                 ]
             )
 
     fake = SimpleNamespace(chat=SimpleNamespace(completions=FakeCompletions()))
     monkeypatch.setattr(ai_client, "_get_client", lambda: fake)
-    assert "".join(ai_client.stream_roadmap("Python", "مبتدئ")) == '{"stage":1}\\n'
+    assert "".join(ai_client.stream_roadmap("Python", "مبتدئ")) == '{"stage":1}\n'
