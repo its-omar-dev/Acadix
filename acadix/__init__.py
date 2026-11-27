@@ -1,5 +1,5 @@
 """Acadix application factory."""
-from flask import Flask
+from flask import Flask, request
 
 from acadix.config import Settings
 
@@ -33,6 +33,8 @@ def create_app(test_config=None):
             "img-src 'self' data:; object-src 'none'; base-uri 'self'; "
             "frame-ancestors 'none'; form-action 'self'",
         )
+        if request.is_secure:
+            response.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
         return response
 
     return app
