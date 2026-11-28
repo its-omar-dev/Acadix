@@ -18,7 +18,7 @@ from flask import (
 )
 
 from acadix.accounts import save_user_roadmap
-from acadix.ai.client import all_models_busy, generate_roadmap, stream_roadmap
+from acadix.ai.client import all_models_busy, chat_with_tutor, generate_roadmap, stream_roadmap
 from acadix.ai.validate import validate_stage
 from acadix.cache import get_cached, set_cached
 from acadix.models import check_database, create_shared_roadmap, get_shared_roadmap, get_topic_stats
@@ -215,6 +215,55 @@ def generate_stream():
     response.headers["Cache-Control"] = "no-cache"
     response.headers["X-Accel-Buffering"] = "no"
     return response
+
+
+
+@main_bp.post("/tutor/chat")
+def tutor_chat():
+    """Bounded AI tutor endpoint; conversation history remains in the browser."""
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify(error="Invalid request body"), 400
+
+    supplied_token = request.headers.get("X-CSRF-Token", "")
+    expected_token = session.get("csrf_token", "")
+    if not expected_token or not hmac.compare_digest(supplied_token, expected_token):
+        return jsonify(error="انتهت صلاحية الجلسة. حدّث الصفحة وحاول مجدداً."), 403
+
+    ip = request.remote_addr or "unknown"
+    if too_many("tutor:" + ip, limit=12, window=3600):
+        return jsonify(error="وصلت إلى الحد المؤقت للمحادثات. حاول لاحقاً."), 429
+
+    messages = data.get("messages")
+    mode = data.get("mode", "simple")
+    topic = data.get("topic", "")
+    allowed_modes = {"simple", "steps", "examples", "quiz", "socratic"}
+    if mode not in allowed_modes:
+        return jsonify(error="أسلوب الشرح غير صالح."), 400
+    if not isinstance(topic, str) or len(topic) > 120:
+        return jsonify(error="الموضوع غير صالح."), 400
+    if not isinstance(messages, list) or not 1 <= len(messages) <= 12:
+        return jsonify(error="أرسل رسالة واحدة إلى 12 رسالة في السياق."), 400
+
+    safe_messages = []
+    for item in messages:
+        if not isinstance(item, dict) or item.get("role") not in {"user", "assistant"}:
+            return jsonify(error="صيغة المحادثة غير صالحة."), 400
+        content = item.get("content")
+        if not isinstance(content, str) or not content.strip() or len(content) > 3000:
+            return jsonify(error="يجب أن تكون كل رسالة نصاً لا يتجاوز 3000 حرف."), 400
+        safe_messages.append({"role": item["role"], "content": content.strip()})
+    if safe_messages[-1]["role"] != "user":
+        return jsonify(error="آخر رسالة يجب أن تكون من الطالب."), 400
+
+    try:
+        answer = chat_with_tutor(safe_messages, mode=mode, topic=topic)
+    except Exception:
+        current_app.logger.exception("AI tutor request failed")
+        answer = None
+    if not answer:
+        return jsonify(error="المدرّس مشغول حالياً أو لم تتوفر استجابة من النماذج. حاول بعد قليل."), 503
+    return jsonify(answer=answer)
 
 
 @share_bp.post("/share")
