@@ -113,3 +113,52 @@ def stream_roadmap(topic, level="مبتدئ"):
             if received:
                 raise
             continue
+
+TUTOR_MODES = {
+    "simple": "اشرح ببساطة شديدة وبجمل قصيرة، وافترض أن الطالب مبتدئ.",
+    "steps": "اشرح خطوة بخطوة، ولا تنتقل للخطوة التالية قبل توضيح الحالية.",
+    "examples": "استخدم أمثلة عملية وتشبيهات من الحياة اليومية لتوضيح الفكرة.",
+    "quiz": "حوّل الموضوع إلى تدريب تفاعلي: اسأل سؤالاً واحداً في كل مرة، وانتظر إجابة الطالب ثم صححها.",
+    "socratic": "استخدم أسلوب سقراط: لا تعطِ الحل مباشرة، بل وجّه الطالب بأسئلة وتلميحات تدريجية."
+}
+
+
+def chat_with_tutor(messages, mode="simple", topic=""):
+    """Answer one bounded tutoring turn using the existing Groq key and model fallback."""
+    client = _get_client()
+    if client is None:
+        return None
+
+    style = TUTOR_MODES.get(mode, TUTOR_MODES["simple"])
+    system_prompt = (
+        "أنت المدرّس الذكي في منصة Acadix. مهمتك تعليم الطالب لا مجرد إعطائه الإجابة. "
+        "أجب باللغة العربية ما لم يطلب الطالب لغة أخرى. "
+        "كن دقيقاً، منظماً، مشجعاً، ولا تخترع حقائق أو مصادر. "
+        "إذا لم تعرف فقل ذلك بوضوح. استخدم أمثلة مناسبة لمستوى الطالب، "
+        "وقسّم الشرح الطويل إلى أجزاء صغيرة. لا تدّعِ أنك نفذت كوداً أو تحققت من نتيجة لم تنفذها. "
+        f"أسلوب الشرح المطلوب: {style} "
+        f"الموضوع الذي يتعلمه الطالب (إن وجد): {topic[:120]}"
+    )
+    now = time.time()
+    for model in MODELS:
+        with _lock:
+            if _resting.get(model, 0) > now:
+                continue
+        try:
+            extra = {"extra_body": {"reasoning_effort": "low"}} if "gpt-oss" in model else {}
+            response = client.chat.completions.create(
+                model=model,
+                messages=[{"role": "system", "content": system_prompt}, *messages],
+                temperature=0.6,
+                max_tokens=1000,
+                **extra,
+            )
+            content = response.choices[0].message.content
+            if content and content.strip():
+                return content.strip()
+        except RateLimitError:
+            with _lock:
+                _resting[model] = now + 600
+        except Exception:
+            continue
+    return None
